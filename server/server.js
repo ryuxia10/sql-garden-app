@@ -1,68 +1,77 @@
-// 1. Impor semua bahan yang kita butuhkan
 import express from 'express';
-import mysql from 'mysql2/promise'; // Gunakan versi promise untuk kode yang lebih bersih
+import mysql from 'mysql2/promise';
 import cors from 'cors';
+import alasql from 'alasql'; // Impor library baru kita
 
-// 2. Inisialisasi aplikasi Express
 const app = express();
-const PORT = 3001; // Kita gunakan port 3001 untuk server backend
+const PORT = process.env.PORT || 3001;
 
-// 3. Terapkan middleware
-app.use(cors()); // Izinkan permintaan dari domain lain (React app kita)
-app.use(express.json()); // Izinkan server membaca data JSON dari permintaan
+app.use(cors());
+app.use(express.json());
 
-// 4. Buat koneksi ke database MySQL Anda di XAMPP
-//    'promisePool' memungkinkan kita menggunakan async/await
-const pool = mysql.createPool({
+// --- Koneksi ke Database Master (TiDB Cloud) ---
+// Ini hanya digunakan untuk mengambil data asli
+const masterPool = mysql.createPool({
   host: process.env.DB_HOST,
-  port: process.env.DB_PORT, // Tambahkan port
+  port: process.env.DB_PORT,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  ssl: {
-    minVersion: 'TLSv1.2',
-    rejectUnauthorized: true
-  }
+  ssl: { minVersion: 'TLSv1.2', rejectUnauthorized: true }
 });
 
-// 5. Buat sebuah "rute" atau "endpoint" untuk pengujian
-//    Ini adalah alamat yang akan dihubungi oleh React
-app.get('/api/test', async (req, res) => {
-  try {
-    // Coba lakukan query sederhana ke database
-    const [rows] = await pool.query('SELECT "Koneksi ke MySQL Berhasil!" as message');
-    // Kirim hasilnya kembali sebagai JSON
-    res.json(rows[0]);
-  } catch (error) {
-    // Jika ada eror, kirim pesan eror
-    console.error('Database query error:', error);
-    res.status(500).json({ message: 'Gagal terhubung ke database.' });
-  }
-});
-// Rute untuk menjalankan query dinamis
+// --- Manajemen Sesi & Sandbox ---
+// Objek ini akan menyimpan "akuarium" data untuk setiap pengguna
+const userSessions = {};
+
 app.post('/api/query', async (req, res) => {
-  // Ambil query SQL dari body permintaan yang dikirim React
-  const { query } = req.body;
+  const { query, sessionId } = req.body;
 
-  // Validasi sederhana, jangan jalankan query kosong
-  if (!query) {
-    return res.status(400).json({ error: 'Query tidak boleh kosong.' });
+  if (!query || !sessionId) {
+    return res.status(400).json({ error: 'Query atau Session ID tidak boleh kosong.' });
   }
 
   try {
-    // Jalankan query yang diterima dari frontend
-    const [rows] = await pool.query(query);
+    // Cek apakah pengguna ini sudah punya "akuarium"
+    if (!userSessions[sessionId]) {
+      console.log(`Menciptakan sandbox baru untuk sesi: ${sessionId}`);
+
+      // Jika belum, buatkan satu. Ambil data asli dari TiDB Cloud.
+      const [mawarData] = await masterPool.query('SELECT * FROM mawar');
+      const [daerahData] = await masterPool.query('SELECT * FROM info_daerah');
+
+      // Buat database baru di memori server
+      const sandboxDb = new alasql.Database();
+
+      // Masukkan data asli ke dalam "akuarium"
+      sandboxDb.exec('CREATE TABLE mawar (id INT PRIMARY KEY, warna VARCHAR(50), tinggi_cm INT, asal_bibit VARCHAR(50));');
+      sandboxDb.tables.mawar.data = mawarData;
+
+      sandboxDb.exec('CREATE TABLE info_daerah (nama_daerah VARCHAR(50) PRIMARY KEY, tingkat_kesuburan VARCHAR(20), ketinggian_mdpl INT);');
+      sandboxDb.tables.info_daerah.data = daerahData;
+
+      // Simpan "akuarium" ini untuk sesi pengguna
+      userSessions[sessionId] = sandboxDb;
+    }
+
+    // Jalankan query pengguna pada "akuarium" pribadinya, bukan di database master
+    const results = userSessions[sessionId].exec(query);
+
     // Kirim hasilnya kembali
-    res.status(200).json({ data: rows });
+    // Hasil dari alasql sedikit berbeda, jadi kita sesuaikan
+    const responseData = results.length > 0 && results[0].affectedRows !== undefined 
+      ? { affectedRows: results[0].affectedRows } 
+      : results;
+
+    res.status(200).json({ data: responseData });
+
   } catch (error) {
-    // Jika query salah (syntax error, dll), kirim pesan eror yang jelas
-    console.error('SQL Error:', error.message);
+    // Jika query pengguna salah (syntax error, dll)
+    console.error('Alasql Error:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
 
-
-// 6. Jalankan server
 app.listen(PORT, () => {
   console.log(`🚀 Server backend berjalan di http://localhost:${PORT}`);
 });
