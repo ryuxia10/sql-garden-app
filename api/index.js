@@ -5,15 +5,16 @@ import alasql from 'alasql';
 
 const app = express();
 
-app.use(cors());
+// ================== PERBAIKAN UTAMA DI SINI ==================
+// Kita secara eksplisit mengizinkan semua asal (origin)
+app.use(cors({ origin: '*' }));
+// ==========================================================
+
 app.use(express.json());
 
-// --- Variabel untuk menyimpan status koneksi ---
 let masterPool;
 let connectionError = null;
 
-// --- Blok try...catch untuk koneksi database ---
-// Kita coba buat koneksi saat server pertama kali dijalankan.
 try {
   masterPool = mysql.createPool({
     host: process.env.DB_HOST,
@@ -22,7 +23,7 @@ try {
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     ssl: { minVersion: 'TLSv1.2', rejectUnauthorized: true },
-    connectionLimit: 1, // Batasi koneksi untuk efisiensi di lingkungan serverless
+    connectionLimit: 1,
   });
   console.log("Koneksi ke database master berhasil dibuat.");
 } catch (error) {
@@ -33,23 +34,20 @@ try {
 const userSessions = {};
 
 app.post('/api', async (req, res) => {
-  // Cek apakah koneksi database gagal dari awal
   if (connectionError) {
     return res.status(500).json({ error: `Koneksi database gagal: ${connectionError.message}` });
   }
 
   const { query, sessionId } = req.body;
-
   if (!query || !sessionId) {
     return res.status(400).json({ error: 'Query atau Session ID tidak boleh kosong.' });
   }
 
   try {
     if (!userSessions[sessionId]) {
-      console.log(`Menciptakan sandbox baru untuk sesi: ${sessionId}`);
       const [mawarData] = await masterPool.query('SELECT * FROM mawar');
       const [daerahData] = await masterPool.query('SELECT * FROM info_daerah');
-      
+
       const sandboxDb = new alasql.Database();
       sandboxDb.exec('CREATE TABLE mawar (id INT PRIMARY KEY, warna VARCHAR(50), tinggi_cm INT, asal_bibit VARCHAR(50));');
       sandboxDb.exec('INSERT INTO mawar SELECT * FROM ?', [mawarData]);
@@ -62,7 +60,7 @@ app.post('/api', async (req, res) => {
     const responseData = results.length > 0 && results[0].affectedRows !== undefined 
       ? { affectedRows: results[0].affectedRows } 
       : results;
-    
+
     res.status(200).json({ data: responseData });
   } catch (error) {
     res.status(500).json({ error: error.message });
