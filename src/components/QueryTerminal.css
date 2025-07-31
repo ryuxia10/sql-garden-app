@@ -1,0 +1,59 @@
+.terminal {
+  background-color: #2d3748; /* Warna tanah malam hari */
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  overflow: hidden;
+}
+
+.terminal-header {
+  background-color: #4a5568;
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #e2e8f0;
+  font-family: monospace;
+}
+
+.terminal-button {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.red { background-color: #fc5c5c; }
+.yellow { background-color: #fdbb2d; }
+.green { background-color: #27c93f; }
+
+.terminal-input {
+  width: 100%;
+  height: 150px;
+  background-color: transparent;
+  border: none;
+  color: #90ee90; /* Warna hijau terang seperti tunas baru */
+  padding: 1rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1rem;
+  resize: vertical;
+}
+
+.terminal-input:focus {
+  outline: none;
+}
+
+.terminal-run-button {
+  display: block;
+  width: calc(100% - 2rem);
+  margin: 0 1rem 1rem 1rem;
+  padding: 0.75rem;
+  background-color: #38a169; /* Hijau subur */
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.terminal-run-button:hover {
+  background-color: #2f855a;
+}
