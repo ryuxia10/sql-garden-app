@@ -8,6 +8,11 @@ function MateriManipulasi() {
 
   return (
     <LessonLayout title="Materi 7: Merawat Aktif (`INSERT`, `UPDATE`, `DELETE`)">
+      {/* KOTAK PERINGATAN BARU */}
+      <div className="mb-6 p-4 rounded-lg border bg-amber-500/10 text-amber-700 dark:text-amber-300">
+        <p className="font-bold">Peringatan Penting</p>
+        <p>Perintah di materi ini (`INSERT`, `UPDATE`, `DELETE`) akan mengubah data di sesi Anda. Me-refresh halaman **tidak akan** mengembalikan data. Gunakan **tombol Reset** di pojok kanan atas untuk memulai sesi baru dengan data yang bersih.</p>
+      </div>
 
       <p className="materi-deskripsi">
         Anda sekarang akan belajar memanipulasi taman secara langsung. Ini adalah perintah yang kuat, jadi gunakan dengan hati-hati!

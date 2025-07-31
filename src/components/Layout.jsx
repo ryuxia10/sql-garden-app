@@ -1,5 +1,5 @@
 import React from 'react';
-import { ModeToggle } from './ModeToggle'; // Impor tombol saklar
+import { ModeToggle } from './ModeToggle';
 import { ResetButton } from './ResetButton';
 
 function Layout({ children, onLogoClick, centerContent = false }) {
@@ -7,16 +7,17 @@ function Layout({ children, onLogoClick, centerContent = false }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
-      {/* Gunakan flexbox untuk menata header */}
       <header className="bg-primary text-primary-foreground p-4 shadow-md flex items-center justify-between">
         <button onClick={onLogoClick} className="text-2xl font-bold bg-transparent border-none cursor-pointer text-primary-foreground">
           SQL Garden 🌷
         </button>
-        {/* Letakkan tombol di sini */}
-        <ResetButton />
-        <ModeToggle />
+        
+        <div className="flex items-center gap-2">
+          <ResetButton />
+          <ModeToggle />
+        </div>
       </header>
-
+      
       <main className={mainClasses}>
         {children}
       </main>
