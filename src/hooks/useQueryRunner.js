@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { v4 as uuidv4 } from 'uuid'; // Impor fungsi pembuat ID
+import { v4 as uuidv4 } from 'uuid';
 
-// Fungsi untuk mendapatkan atau membuat Session ID di browser
 function getSessionId() {
   let sessionId = localStorage.getItem('sqlGardenSessionId');
   if (!sessionId) {
@@ -23,24 +22,29 @@ export function useQueryRunner() {
     setIsLoading(true);
     setSuccessMessage('');
 
-    // Ambil ID sesi unik untuk pengguna ini
     const sessionId = getSessionId();
 
     try {
-
-        const response = await fetch(`/api`, {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ query: query, sessionId: sessionId })
-        });
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: query, sessionId: sessionId })
+      });
 
       const result = await response.json();
+
       if (response.ok) {
-        if (result.data.affectedRows > 0) {
+        // ================== LOGIKA YANG DIPERBAIKI ==================
+        // Cek secara eksplisit apakah respons berisi 'affectedRows'.
+        // Ini menandakan respons dari INSERT, UPDATE, atau DELETE.
+        if (result.data && result.data.affectedRows !== undefined) {
           setSuccessMessage(`Query berhasil! ${result.data.affectedRows} baris terpengaruh.`);
+          setResults(null); // Penting: bersihkan hasil tabel sebelumnya!
         } else {
+          // Jika tidak, ini adalah hasil dari SELECT (sebuah array).
           setResults(result.data);
         }
+        // ==========================================================
       } else {
         setError(result.error);
       }
