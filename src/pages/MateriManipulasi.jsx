@@ -23,8 +23,9 @@ function MateriManipulasi() {
 
       <QueryTerminal 
         onRunQuery={runQuery} 
-        placeholderQuery="Contoh: INSERT INTO mawar (id, warna, tinggi_cm, asal_bibit) VALUES (9, 'Ungu', 22, 'Surabaya');" 
-      />
+        // Sintaks yang benar: INSERT INTO nama_tabel (...)
+        placeholderQuery="Contoh: INSERT INTO mawar (id, warna, tinggi_cm, asal_bibit) VALUES (10, 'Oranye', 26, 'Bali');" 
+        />
       <QueryResult 
         results={results} 
         error={error} 

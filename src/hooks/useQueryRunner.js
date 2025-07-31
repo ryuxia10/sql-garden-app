@@ -1,50 +1,72 @@
-import { useState } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import { useState, useEffect } from 'react';
+import alasql from 'alasql';
 
-function getSessionId() {
-  let sessionId = localStorage.getItem('sqlGardenSessionId');
-  if (!sessionId) {
-    sessionId = uuidv4();
-    localStorage.setItem('sqlGardenSessionId', sessionId);
+// Buat database alasql satu kali saja
+const sandboxDb = new alasql.Database();
+
+// State untuk menyimpan status data awal
+let initialDataPromise = null;
+
+// Fungsi untuk mengambil data awal dari server
+const fetchInitialData = async () => {
+  try {
+    const response = await fetch('/api/get-initial-data');
+    const data = await response.json();
+
+    // Buat ulang tabel dan isi dengan data bersih
+    sandboxDb.exec('DROP TABLE IF EXISTS mawar; CREATE TABLE mawar (id INT PRIMARY KEY, warna VARCHAR(50), tinggi_cm INT, asal_bibit VARCHAR(50));');
+    sandboxDb.exec('INSERT INTO mawar SELECT * FROM ?', [data.mawar]);
+
+    sandboxDb.exec('DROP TABLE IF EXISTS info_daerah; CREATE TABLE info_daerah (nama_daerah VARCHAR(50) PRIMARY KEY, tingkat_kesuburan VARCHAR(20), ketinggian_mdpl INT);');
+    sandboxDb.exec('INSERT INTO info_daerah SELECT * FROM ?', [data.info_daerah]);
+
+    return true;
+  } catch (error) {
+    console.error("Gagal mengambil data awal:", error);
+    return false;
   }
-  return sessionId;
-}
+};
 
 export function useQueryRunner() {
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Loading saat pertama kali
   const [successMessage, setSuccessMessage] = useState('');
 
-  const runQuery = async (query) => {
+  // Ambil data awal saat hook pertama kali digunakan
+  useEffect(() => {
+    if (!initialDataPromise) {
+      initialDataPromise = fetchInitialData();
+    }
+    initialDataPromise.then(success => {
+      if (!success) {
+        setError("Gagal memuat data awal dari server. Coba refresh halaman.");
+      }
+      setIsLoading(false);
+    });
+  }, []);
+
+  const runQuery = (query) => {
     setResults(null);
     setError(null);
-    setIsLoading(true);
     setSuccessMessage('');
+    setIsLoading(true);
 
-    const sessionId = getSessionId();
-
+    // Jalankan query langsung di alasql (frontend)
     try {
-      const response = await fetch(`/api`, { // Menggunakan alamat relatif
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: query, sessionId: sessionId })
-      });
-      
-      const result = await response.json();
-      
-      if (response.ok) {
-        if (result.data && result.data.affectedRows !== undefined) {
-          setSuccessMessage(`Query berhasil! ${result.data.affectedRows} baris terpengaruh.`);
-          setResults(null);
-        } else {
-          setResults(result.data);
-        }
+      const res = sandboxDb.exec(query);
+      const queryType = query.trim().toUpperCase().split(' ')[0];
+
+      if (['INSERT', 'UPDATE', 'DELETE', 'CREATE', 'DROP'].includes(queryType)) {
+         // alasql mengembalikan jumlah baris yang terpengaruh untuk DML
+        const affectedRows = res[0]?.affectedRows ?? res;
+        setSuccessMessage(`Query berhasil! ${affectedRows} baris terpengaruh.`);
+        setResults(null);
       } else {
-        setError(result.error || 'Terjadi kesalahan pada server.');
+        setResults(res);
       }
     } catch (err) {
-      setError('Gagal terhubung ke server. Periksa koneksi Anda.');
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }
