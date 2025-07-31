@@ -25,31 +25,26 @@ export function useQueryRunner() {
     const sessionId = getSessionId();
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api`, {
+      const response = await fetch(`/api`, { // Menggunakan alamat relatif
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: query, sessionId: sessionId })
       });
-
+      
       const result = await response.json();
-
+      
       if (response.ok) {
-        // ================== LOGIKA YANG DIPERBAIKI ==================
-        // Cek secara eksplisit apakah respons berisi 'affectedRows'.
-        // Ini menandakan respons dari INSERT, UPDATE, atau DELETE.
         if (result.data && result.data.affectedRows !== undefined) {
           setSuccessMessage(`Query berhasil! ${result.data.affectedRows} baris terpengaruh.`);
-          setResults(null); // Penting: bersihkan hasil tabel sebelumnya!
+          setResults(null);
         } else {
-          // Jika tidak, ini adalah hasil dari SELECT (sebuah array).
           setResults(result.data);
         }
-        // ==========================================================
       } else {
-        setError(result.error);
+        setError(result.error || 'Terjadi kesalahan pada server.');
       }
     } catch (err) {
-      setError('Gagal terhubung ke server. Pastikan server backend berjalan.');
+      setError('Gagal terhubung ke server. Periksa koneksi Anda.');
     } finally {
       setIsLoading(false);
     }

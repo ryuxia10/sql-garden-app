@@ -4,17 +4,10 @@ import cors from 'cors';
 import alasql from 'alasql';
 
 const app = express();
-
-// ================== PERBAIKAN UTAMA DI SINI ==================
-// Kita secara eksplisit mengizinkan semua asal (origin)
 app.use(cors({ origin: '*' }));
-// ==========================================================
-
 app.use(express.json());
 
 let masterPool;
-let connectionError = null;
-
 try {
   masterPool = mysql.createPool({
     host: process.env.DB_HOST,
@@ -25,17 +18,15 @@ try {
     ssl: { minVersion: 'TLSv1.2', rejectUnauthorized: true },
     connectionLimit: 1,
   });
-  console.log("Koneksi ke database master berhasil dibuat.");
 } catch (error) {
   console.error("GAGAL MEMBUAT KONEKSI DATABASE:", error);
-  connectionError = error;
 }
 
 const userSessions = {};
 
 app.post('/api', async (req, res) => {
-  if (connectionError) {
-    return res.status(500).json({ error: `Koneksi database gagal: ${connectionError.message}` });
+  if (!masterPool) {
+    return res.status(500).json({ error: "Koneksi database master tidak terinisialisasi. Periksa variabel lingkungan." });
   }
 
   const { query, sessionId } = req.body;
@@ -47,7 +38,7 @@ app.post('/api', async (req, res) => {
     if (!userSessions[sessionId]) {
       const [mawarData] = await masterPool.query('SELECT * FROM mawar');
       const [daerahData] = await masterPool.query('SELECT * FROM info_daerah');
-
+      
       const sandboxDb = new alasql.Database();
       sandboxDb.exec('CREATE TABLE mawar (id INT PRIMARY KEY, warna VARCHAR(50), tinggi_cm INT, asal_bibit VARCHAR(50));');
       sandboxDb.exec('INSERT INTO mawar SELECT * FROM ?', [mawarData]);
@@ -60,9 +51,10 @@ app.post('/api', async (req, res) => {
     const responseData = results.length > 0 && results[0].affectedRows !== undefined 
       ? { affectedRows: results[0].affectedRows } 
       : results;
-
+    
     res.status(200).json({ data: responseData });
   } catch (error) {
+    console.error("Server runtime error:", error);
     res.status(500).json({ error: error.message });
   }
 });
