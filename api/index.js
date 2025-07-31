@@ -5,7 +5,6 @@ import alasql from 'alasql';
 
 const app = express();
 
-// Izinkan Vercel mengelola CORS
 app.use(cors());
 app.use(express.json());
 
@@ -30,17 +29,28 @@ app.post('/api', async (req, res) => {
 
   try {
     if (!userSessions[sessionId]) {
+      console.log(`Menciptakan sandbox baru untuk sesi: ${sessionId}`);
+
       const [mawarData] = await masterPool.query('SELECT * FROM mawar');
       const [daerahData] = await masterPool.query('SELECT * FROM info_daerah');
+
       const sandboxDb = new alasql.Database();
+
+      // Buat struktur tabel
       sandboxDb.exec('CREATE TABLE mawar (id INT PRIMARY KEY, warna VARCHAR(50), tinggi_cm INT, asal_bibit VARCHAR(50));');
-      sandboxDb.tables.mawar.data = mawarData;
       sandboxDb.exec('CREATE TABLE info_daerah (nama_daerah VARCHAR(50) PRIMARY KEY, tingkat_kesuburan VARCHAR(20), ketinggian_mdpl INT);');
-      sandboxDb.tables.info_daerah.data = daerahData;
+
+      // ================== BAGIAN YANG DIPERBAIKI ==================
+      // Gunakan perintah INSERT agar indeks primary key dibuat dengan benar
+      sandboxDb.exec('INSERT INTO mawar SELECT * FROM ?', [mawarData]);
+      sandboxDb.exec('INSERT INTO info_daerah SELECT * FROM ?', [daerahData]);
+      // ==========================================================
+
       userSessions[sessionId] = sandboxDb;
     }
 
     const results = userSessions[sessionId].exec(query);
+
     const responseData = results.length > 0 && results[0].affectedRows !== undefined 
       ? { affectedRows: results[0].affectedRows } 
       : results;
@@ -52,5 +62,5 @@ app.post('/api', async (req, res) => {
   }
 });
 
-// Ekspor 'app' agar Vercel bisa menggunakannya
+// Vercel akan menangani listen, jadi kita ekspor app-nya
 export default app;
