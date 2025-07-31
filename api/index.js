@@ -14,7 +14,7 @@ try {
     port: process.env.DB_PORT,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME || 'test', // Fallback ke 'test'
+    database: process.env.DB_NAME || 'test',
     ssl: { minVersion: 'TLSv1.2', rejectUnauthorized: true },
     connectionLimit: 1,
   });

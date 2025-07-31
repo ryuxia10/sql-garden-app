@@ -1,13 +1,13 @@
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useDatabase } from "../context/DatabaseContext"; // Impor hook context
 
 export function ResetButton() {
-  const { resetSandbox } = useDatabase(); // Ambil fungsi reset dari context
-
   const handleReset = () => {
     if (window.confirm("Apakah Anda yakin ingin mereset semua perubahan di sandbox?")) {
-      resetSandbox(); // Panggil fungsi reset dari context
+      // Hapus ID sesi dari penyimpanan browser
+      localStorage.removeItem('sqlGardenSessionId');
+      // Muat ulang halaman
+      window.location.reload();
     }
   };
 
