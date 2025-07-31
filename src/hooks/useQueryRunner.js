@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import alasql from 'alasql';
+// PERBAIKAN DI SINI: Ubah cara kita mengimpor alasql
+import * as alasql from 'alasql';
 
 // Buat database alasql satu kali saja
 const sandboxDb = new alasql.Database();
@@ -58,7 +59,6 @@ export function useQueryRunner() {
       const queryType = query.trim().toUpperCase().split(' ')[0];
 
       if (['INSERT', 'UPDATE', 'DELETE', 'CREATE', 'DROP'].includes(queryType)) {
-         // alasql mengembalikan jumlah baris yang terpengaruh untuk DML
         const affectedRows = res[0]?.affectedRows ?? res;
         setSuccessMessage(`Query berhasil! ${affectedRows} baris terpengaruh.`);
         setResults(null);
