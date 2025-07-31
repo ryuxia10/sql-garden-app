@@ -27,12 +27,12 @@ export function useQueryRunner() {
     const sessionId = getSessionId();
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/query`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // Kirim query DAN sessionId ke server
-        body: JSON.stringify({ query: query, sessionId: sessionId })
-      });
+
+        const response = await fetch(`/api`, {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ query: query, sessionId: sessionId })
+        });
 
       const result = await response.json();
       if (response.ok) {
