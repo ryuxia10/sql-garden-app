@@ -1,5 +1,6 @@
 import React from 'react';
 import { ModeToggle } from './ModeToggle'; // Impor tombol saklar
+import { ResetButton } from './ResetButton';
 
 function Layout({ children, onLogoClick, centerContent = false }) {
   const mainClasses = `flex-grow p-4 md:p-8 ${centerContent ? 'flex items-center justify-center' : ''}`;
@@ -12,6 +13,7 @@ function Layout({ children, onLogoClick, centerContent = false }) {
           SQL Garden 🌷
         </button>
         {/* Letakkan tombol di sini */}
+        <ResetButton />
         <ModeToggle />
       </header>
 

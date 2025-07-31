@@ -1,54 +1,41 @@
 import { useState } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-
-function getSessionId() {
-  let sessionId = localStorage.getItem('sqlGardenSessionId');
-  if (!sessionId) {
-    sessionId = uuidv4();
-    localStorage.setItem('sqlGardenSessionId', sessionId);
-  }
-  return sessionId;
-}
+import { useDatabase } from '../context/DatabaseContext'; // Impor hook context kita
 
 export function useQueryRunner() {
+  const { db, isDbLoading, dbError } = useDatabase(); // Ambil database dari context
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
-  const runQuery = async (query) => {
+  const runQuery = (query) => {
+    if (isDbLoading || dbError) return; // Jangan jalankan jika DB belum siap
+
     setResults(null);
     setError(null);
-    setIsLoading(true);
     setSuccessMessage('');
+    setIsLoading(true);
 
-    const sessionId = getSessionId();
+    // Beri sedikit jeda agar loading spinner terlihat
+    setTimeout(() => {
+      try {
+        const res = db.exec(query);
+        const queryType = query.trim().toUpperCase().split(' ')[0];
 
-    try {
-      const response = await fetch(`/api`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: query, sessionId: sessionId })
-      });
-      
-      const result = await response.json();
-      
-      if (response.ok) {
-        if (result.data && result.data.affectedRows !== undefined) {
-          setSuccessMessage(`Query berhasil! ${result.data.affectedRows} baris terpengaruh.`);
+        if (['INSERT', 'UPDATE', 'DELETE', 'CREATE', 'DROP'].includes(queryType)) {
+          const affectedRows = res[0]?.affectedRows ?? res;
+          setSuccessMessage(`Query berhasil! ${affectedRows} baris terpengaruh.`);
           setResults(null);
         } else {
-          setResults(result.data);
+          setResults(res);
         }
-      } else {
-        setError(result.error || 'Terjadi kesalahan pada server.');
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      setError('Gagal terhubung ke server. Periksa koneksi Anda.');
-    } finally {
-      setIsLoading(false);
-    }
+    }, 300); // Jeda 300ms
   };
 
-  return { results, error, isLoading, successMessage, runQuery };
+  return { results, error: error || dbError, isLoading: isLoading || isDbLoading, successMessage, runQuery };
 }
